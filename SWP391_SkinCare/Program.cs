@@ -5,7 +5,7 @@
 builder.Services.AddControllers();
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenAnyIP(5000); // Cho phép truy cập từ mọi IP
+    serverOptions.ListenAnyIP(5001); // Cho phép truy cập từ mọi IP
 });
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
