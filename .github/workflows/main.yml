@@ -1,56 +1,23 @@
-name: Deploy to VPS
-
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
+  
 jobs:
-  deploy:
-    name: Deploy to VPS
+  run_pull:
+    name: run pull
     runs-on: ubuntu-latest
-
+    
     steps:
-    - name: 🔍 In ra biến để debug
+    - name: install ssh keys
+      # check this thread to understand why its needed:
+      # https://stackoverflow.com/a/70447517
       run: |
-        echo "SSH_HOST = '${{ secrets.SSH_HOST }}'"
-        echo "SSH_USER = '${{ secrets.SSH_USER }}'"
-        echo "MAIN_BRANCH = '${{ secrets.MAIN_BRANCH }}'"
-        echo "WORK_DIR = '${{ secrets.WORK_DIR }}'"
-        if [ -z "${{ secrets.SSH_HOST }}" ]; then
-          echo "❌ Lỗi: SSH_HOST rỗng hoặc không tồn tại!"
-          exit 1
-        else
-          echo "✅ SSH_HOST đã có giá trị."
-        fi
-
-    - name: 🛠️ Thiết lập SSH
-      run: |
-        mkdir -p ~/.ssh
         install -m 600 -D /dev/null ~/.ssh/id_rsa
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
-
-    - name: 🚀 Kết nối SSH và chạy lệnh
-      run: |
-        echo "📡 Đang kết nối SSH đến ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}"
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          echo "✅ Kết nối SSH thành công!"
-
-          echo "📂 Di chuyển vào thư mục: ${{ secrets.WORK_DIR }}"
-          cd ${{ secrets.WORK_DIR }} || { echo "❌ Không tìm thấy thư mục làm việc!"; exit 1; }
-
-          echo "📌 Checkout branch: ${{ secrets.MAIN_BRANCH }}"
-          git checkout ${{ secrets.MAIN_BRANCH }} || { echo "❌ Checkout thất bại!"; exit 1; }
-
-          echo "📥 Pull code..."
-          git pull || { echo "❌ Pull code thất bại!"; exit 1; }
-
-          echo "🚀 Chạy script deploy.sh..."
-          chmod +x ./deploy.sh
-          ./deploy.sh || { echo "❌ Script deploy.sh lỗi!"; exit 1; }
-
-          echo "✅ Deploy thành công!"
-        EOF
+    - name: connect and pull
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && git pull && exit"
+    - name: cleanup
+      run: rm -rf ~/.ssh
