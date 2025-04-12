@@ -5,36 +5,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  run_pull:
+  deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install SSH Key
+    - name: Thiết lập SSH
       run: |
-        install -m 600 -D /dev/null ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-    - name: SSH & Pull + Deploy
+    - name: Kết nối và deploy
       run: |
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+        echo "🚀 Bắt đầu kết nối SSH đến VPS..."
+        ssh -o StrictHostKeyChecking=no -T ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
           echo "✅ Kết nối SSH thành công!"
-          
-          cd ${{ secrets.WORK_DIR }} || { echo "❌ Không tìm thấy thư mục làm việc!"; exit 1; }
 
-          echo "📌 Đang chuyển về branch: ${{ secrets.MAIN_BRANCH }}"
-          git checkout ${{ secrets.MAIN_BRANCH }} || { echo "❌ Checkout thất bại!"; exit 1; }
-
-          echo "📥 Đang pull code mới..."
-          git pull || { echo "❌ Pull code thất bại!"; exit 1; }
-
-          echo "🚀 Chạy script deploy.sh..."
-          chmod +x ./deploy.sh
-          ./deploy.sh || { echo "❌ Script deploy.sh lỗi!"; exit 1; }
-
-          echo "✅ Deploy hoàn tất!"
-        EOF
-
-    - name: Cleanup
-      run: rm -rf ~/.ssh
+          echo "📂 Di chuyển vào thư mục: ${{ secrets.WORK_DIR }}"
+          cd ${{ secrets.WORK_DIR }} ||_
