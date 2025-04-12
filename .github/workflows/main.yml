@@ -10,18 +10,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Thiết lập SSH
+    - name: Thiết lập SSH key
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Kết nối và deploy
+    - name: Kiểm tra biến SSH_HOST
+      run: |
+        echo "🔍 SSH_HOST = ${{ secrets.SSH_HOST }}"
+        echo "🔍 SSH_USER = ${{ secrets.SSH_USER }}"
+
+    - name: Kết nối SSH và deploy
       run: |
         echo "🚀 Bắt đầu kết nối SSH đến VPS..."
         ssh -o StrictHostKeyChecking=no -T ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
           echo "✅ Kết nối SSH thành công!"
 
           echo "📂 Di chuyển vào thư mục: ${{ secrets.WORK_DIR }}"
-          cd ${{ secrets.WORK_DIR }} ||_
+          cd ${{ secrets.WORK_DIR }} || { echo "❌ Không tìm thấy thư mục!"; exit 1; }
+
+          echo "🔄 Chuyển branch: ${{ secrets.MAIN_BRANCH }}"
+          git checkout ${{ secrets.MAIN_BRANCH }} || { echo "❌ Checkout lỗi!"; exit 1; }
+
+          echo "⬇️  Pull code từ Git"
+          git pull || { echo "❌ Pull lỗi!"; exit 1; }
+
+          echo "🚀 Chạy script deploy.sh"
+          chmod +x ./deploy.sh
+          ./deploy.sh || { echo "❌ Lỗi khi chạy deploy.sh!"; exit 1; }
+
+          echo "🎉 Deploy thành công!"
+        EOF
