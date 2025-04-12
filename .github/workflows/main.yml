@@ -3,21 +3,38 @@ on:
     branches:
       - main
   workflow_dispatch:
-  
+
 jobs:
   run_pull:
-    name: run pull
+    name: Deploy to VPS
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: install ssh keys
-      # check this thread to understand why its needed:
-      # https://stackoverflow.com/a/70447517
+    - name: Install SSH Key
       run: |
         install -m 600 -D /dev/null ~/.ssh/id_rsa
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
-    - name: connect and pull
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && git pull && exit"
-    - name: cleanup
+
+    - name: SSH & Pull + Deploy
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          echo "✅ Kết nối SSH thành công!"
+          
+          cd ${{ secrets.WORK_DIR }} || { echo "❌ Không tìm thấy thư mục làm việc!"; exit 1; }
+
+          echo "📌 Đang chuyển về branch: ${{ secrets.MAIN_BRANCH }}"
+          git checkout ${{ secrets.MAIN_BRANCH }} || { echo "❌ Checkout thất bại!"; exit 1; }
+
+          echo "📥 Đang pull code mới..."
+          git pull || { echo "❌ Pull code thất bại!"; exit 1; }
+
+          echo "🚀 Chạy script deploy.sh..."
+          chmod +x ./deploy.sh
+          ./deploy.sh || { echo "❌ Script deploy.sh lỗi!"; exit 1; }
+
+          echo "✅ Deploy hoàn tất!"
+        EOF
+
+    - name: Cleanup
       run: rm -rf ~/.ssh
