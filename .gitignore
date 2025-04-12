@@ -401,3 +401,5 @@ FodyWeavers.xsd
 # Ignore obj and bin directories
 obj/
 bin/
+/obj/
+
